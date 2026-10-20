@@ -1,0 +1,56 @@
+{
+  "name": "cad-harness",
+  "version": "1.0.0",
+  "description": "对话式 CAD 生成",
+  "icon": "boxes",
+  "skills": [
+    "bambu-labs",
+    "cad",
+    "cad-animate",
+    "cad-component-generation",
+    "cad-plan",
+    "cad-viewer",
+    "dfam-check",
+    "dxf",
+    "gcode",
+    "implicit-cad",
+    "sdf",
+    "sendcutsend",
+    "srdf",
+    "step-parts",
+    "urdf"
+  ],
+  "mcpServers": [
+    "cad-control"
+  ],
+  "display": {
+    "kind": "cad-viewer"
+  },
+  "agent": {
+    "agentType": "cad-harness",
+    "whenToUse": "对话式 STEP-first 参数化 CAD 建模、检查与可视化。",
+    "permissionMode": "auto",
+    "tools": [
+      "*"
+    ],
+    "systemPromptFile": "prompt.md"
+  },
+  "mcp": {
+    "cad-control": {
+      "command": "${ENV:CAD_PYTHON}",
+      "args": [
+        "${CODERIX_PLUGIN_ROOT}/mcp/cad-control/server.py"
+      ],
+      "env": {
+        "CAD_PYTHON": "${ENV:CAD_PYTHON}",
+        "CAD_SKILL_DIR": "${CODERIX_PLUGIN_ROOT}/skills/cad"
+      }
+    }
+  },
+  "runtime": {
+    "env": {
+      "CAD_SKILL_DIR": "${CODERIX_PLUGIN_ROOT}/skills/cad",
+      "CAD_VIEWER_DIR": "${CODERIX_PLUGIN_ROOT}/skills/cad-viewer"
+    }
+  }
+}

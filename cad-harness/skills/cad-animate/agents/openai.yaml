@@ -1,0 +1,4 @@
+interface:
+  display_name: "CAD Animation"
+  short_description: "Animate CAD assemblies into GIFs or PNG sequences."
+  default_prompt: "Use $cad-animate to turn an existing gen_step() CAD model into a kinematic motion or build-up assembly animation, rendering frames via $cad's snapshot CLI and stitching them into a GIF."

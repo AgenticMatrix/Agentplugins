@@ -1,0 +1,22 @@
+# Python 字节码与缓存
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# 虚拟环境与打包产物
+.venv/
+venv/
+*.egg-info/
+build/
+*.whl
+
+# 前端依赖
+node_modules/
+
+# 本地覆盖配置（.env 本身是项目默认配置，随仓库分发）
+.env.local
+.env.*.local
+
+# macOS
+.DS_Store

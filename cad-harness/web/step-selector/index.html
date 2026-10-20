@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CAD 步骤选择器</title>
+<style>
+  :root {
+    --bg: #0b0c0e;
+    --bg-input: #14161a;
+    --border: #2a2d33;
+    --text: #d4d7dd;
+    --text-dim: #8a8f99;
+    --accent: #3b82f6;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .root {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    height: 100%;
+  }
+  .row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .label {
+    flex: 0 0 auto;
+    width: 44px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-dim);
+  }
+  .vlabel {
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-dim);
+  }
+  select {
+    min-width: 0;
+    flex: 1 1 0;
+    border: 1px solid var(--border);
+    background: var(--bg-input);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+  }
+  select:focus { border-color: var(--accent); }
+  select:disabled { opacity: 0.45; cursor: not-allowed; }
+</style>
+</head>
+<body>
+  <div class="root" id="root"></div>
+  <script>
+    // ───────────────────────────────────────────────────────────────────────
+    // 自包含 CAD 步骤选择器 —— 装配体 / 零件 两行，每行「名称 + 版本」下拉。
+    //
+    // 由宿主编译进一个 WebContentsView，数据通过
+    //   window.CadStepSelector.setSteps(steps, selectedId)
+    // 推入；用户选中时通过
+    //   window.CadStepSelector.onSelect((id) => { ... })
+    // 回调（本页面经 preload 提供 window.cadSelector.select(id) 转 IPC）。
+    //
+    // 分组/排序/版本号逻辑是 cad_harness StepList.tsx / steps.ts 的等价移植。
+    // ───────────────────────────────────────────────────────────────────────
+    (function () {
+      var FRAME_RE = /^frame_\d+$/i;
+
+      function isFrame(step) {
+        return step.kind === "frame" || FRAME_RE.test(step.baseName || step.name);
+      }
+      function baseNameOf(step) { return step.baseName || step.name; }
+      function versionOf(step) { return step.version == null ? 1 : step.version; }
+
+      function sortSteps(steps) {
+        return steps.slice().sort(function (a, b) {
+          var an = baseNameOf(a), bn = baseNameOf(b);
+          if (an !== bn) return an.localeCompare(bn);
+          if (!!a.isLatest !== !!b.isLatest) return a.isLatest ? -1 : 1;
+          return versionOf(a) - versionOf(b);
+        });
+      }
+
+      function groupSteps(steps) {
+        var map = new Map();
+        steps.forEach(function (step) {
+          var key = baseNameOf(step);
+          var list = map.get(key);
+          if (list) list.push(step);
+          else map.set(key, [step]);
+        });
+        return Array.from(map.entries())
+          .map(function (entry) { return { baseName: entry[0], versions: entry[1] }; })
+          .sort(function (a, b) { return a.baseName.localeCompare(b.baseName); });
+      }
+
+      function statusLabel(status) {
+        if (status === "generating") return "生成中";
+        if (status === "generated") return "已生成";
+        if (status === "validating") return "校验中";
+        if (status === "validation_failed") return "校验失败";
+        if (status === "validated") return "已校验";
+        return status || "已生成";
+      }
+
+      function versionLabel(step) {
+        if (step.isLatest) return "latest · " + statusLabel(step.status);
+        return "v" + versionOf(step) + " · " + statusLabel(step.status);
+      }
+
+      var steps = [];
+      var selectedId = "";
+      var onSelectCb = null;
+      var lastSignature = "";
+      var root = document.getElementById("root");
+
+      function el(tag, className, text) {
+        var node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text != null) node.textContent = text;
+        return node;
+      }
+
+      function buildGroupRow(label, groups, placeholder) {
+        var row = el("div", "row");
+        row.appendChild(el("span", "label", label));
+
+        var selectedBase = "";
+        groups.forEach(function (group) {
+          if (group.versions.some(function (v) { return v.id === selectedId; })) {
+            selectedBase = group.baseName;
+          }
+        });
+        var selectedGroup = groups.find(function (g) { return g.baseName === selectedBase; });
+
+        var nameSelect = el("select");
+        nameSelect.appendChild(
+          (function () {
+            var opt = el("option", "", groups.length === 0 ? "（暂无）" : placeholder);
+            opt.value = "";
+            return opt;
+          })()
+        );
+        groups.forEach(function (group) {
+          var opt = el("option", "", group.baseName);
+          opt.value = group.baseName;
+          nameSelect.appendChild(opt);
+        });
+        nameSelect.value = selectedBase;
+
+        nameSelect.addEventListener("change", function () {
+          var base = nameSelect.value;
+          var group = groups.find(function (g) { return g.baseName === base; });
+          if (!group || group.versions.length === 0) return;
+          var live = group.versions.find(function (v) { return v.isLatest; });
+          var target = live || group.versions[group.versions.length - 1];
+          if (onSelectCb) onSelectCb(target.id);
+        });
+
+        row.appendChild(nameSelect);
+        row.appendChild(el("span", "vlabel", "版本"));
+
+        var versionSelect = el("select");
+        if (selectedGroup) {
+          selectedGroup.versions.forEach(function (v) {
+            var opt = el("option", "", versionLabel(v));
+            opt.value = v.id;
+            versionSelect.appendChild(opt);
+          });
+          versionSelect.value = selectedId;
+        } else {
+          var opt = el("option", "", "选择版本…");
+          opt.value = "";
+          versionSelect.appendChild(opt);
+        }
+        versionSelect.disabled = !selectedGroup;
+
+        versionSelect.addEventListener("change", function () {
+          if (versionSelect.value && onSelectCb) onSelectCb(versionSelect.value);
+        });
+
+        row.appendChild(versionSelect);
+        return row;
+      }
+
+      function render() {
+        var ordered = sortSteps(steps).filter(function (s) { return !isFrame(s); });
+        var assemblies = ordered.filter(function (s) { return s.kind !== "part"; });
+        var parts = ordered.filter(function (s) { return s.kind === "part"; });
+
+        root.replaceChildren();
+        root.appendChild(buildGroupRow("装配体", groupSteps(assemblies), "选择装配体…"));
+        root.appendChild(buildGroupRow("零件", groupSteps(parts), "选择零件…"));
+      }
+
+      function signature(next, selId) {
+        return (selId || "") + "|" + (next || []).map(function (s) {
+          return [s.id, s.baseName, s.version, s.isLatest ? 1 : 0, s.kind, s.status, s.viewerFile || ""].join("");
+        }).join("");
+      }
+
+      window.CadStepSelector = {
+        setSteps: function (next, selId) {
+          steps = Array.isArray(next) ? next : [];
+          selectedId = typeof selId === "string" ? selId : "";
+          var sig = signature(steps, selectedId);
+          if (sig === lastSignature) return; // 数据未变，避免每次轮询重建而打断用户交互
+          lastSignature = sig;
+          render();
+        },
+        onSelect: function (cb) {
+          onSelectCb = typeof cb === "function" ? cb : null;
+        }
+      };
+
+      // 宿主（Atria）经 preload 暴露 window.cadSelector.select(id)；这里自接线，
+      // 让用户在下拉里的选择通过它回到主进程驱动 viewer 导航。
+      if (window.cadSelector && typeof window.cadSelector.select === "function") {
+        window.CadStepSelector.onSelect(function (id) {
+          window.cadSelector.select(id);
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
