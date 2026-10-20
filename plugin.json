@@ -1,0 +1,47 @@
+{
+  "name": "blender-harness",
+  "version": "1.0.0",
+  "description": "对话式 Blender 建模",
+  "icon": "blender",
+  "skills": [
+    "blender",
+    "blender-viewer"
+  ],
+  "mcpServers": [
+    "blender"
+  ],
+  "display": {
+    "kind": "blender-viewer"
+  },
+  "agent": {
+    "agentType": "blender-harness",
+    "whenToUse": "对话式 Blender 建模、渲染与导出。",
+    "permissionMode": "auto",
+    "tools": [
+      "*"
+    ],
+    "systemPromptFile": "prompt.md"
+  },
+  "mcp": {
+    "blender": {
+      "command": "${ENV:BLENDER_UV}",
+      "args": [
+        "--directory",
+        "${CODERIX_PLUGIN_ROOT}/mcp/blender",
+        "run",
+        "blender-mcp"
+      ],
+      "env": {
+        "BLENDER_MCP_HOST": "${ENV:BLENDER_MCP_HOST}",
+        "BLENDER_MCP_PORT": "${ENV:BLENDER_MCP_PORT}"
+      }
+    }
+  },
+  "runtime": {
+    "env": {
+      "BLENDER_MCP_HOST": "${ENV:BLENDER_MCP_HOST}",
+      "BLENDER_MCP_PORT": "${ENV:BLENDER_MCP_PORT}",
+      "BLENDER_VIEWER_DIR": "${CODERIX_PLUGIN_ROOT}/components/viewer"
+    }
+  }
+}

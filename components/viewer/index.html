@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Blender Harness</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <button id="sidebarToggleBtn" class="btn ghost icon" title="显示 / 隐藏会话列表">☰</button>
+        <span class="logo">⬡</span>
+        <span class="title" id="sessionTitle">Blender Harness</span>
+        <span id="status" class="status">
+          <span class="dot"></span>
+          <span id="statusText">连接中…</span>
+        </span>
+      </div>
+      <div class="topbar-actions">
+        <select id="profileSelect" class="profile-select" title="切换模型"></select>
+        <button id="viewToggleBtn" class="btn ghost" title="显示 / 隐藏 Blender 实时渲染">视图</button>
+      </div>
+    </header>
+
+    <main class="layout view-hidden">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">会话</span>
+          <button id="newSessionBtn" class="btn ghost icon" title="新建对话">＋</button>
+        </div>
+        <div id="sessionList" class="session-list"></div>
+      </aside>
+
+      <section class="chat-panel">
+        <div id="messages" class="messages"></div>
+        <form id="composer" class="composer">
+          <textarea
+            id="input"
+            rows="1"
+            placeholder="描述你想让 Blender 建模的内容，例如：做一个带圆角的木质桌面，长 120cm 宽 60cm 厚 4cm…"
+          ></textarea>
+          <button id="sendBtn" type="submit" class="btn primary">发送</button>
+          <button id="stopBtn" type="button" class="btn danger" hidden>停止</button>
+        </form>
+      </section>
+
+      <section class="view-panel">
+        <div class="view-header">
+          <span class="view-title">Blender 实时渲染</span>
+          <button id="refreshBtn" class="btn ghost">刷新渲染</button>
+        </div>
+        <div id="viewer" class="viewer">
+          <div id="placeholder" class="placeholder">
+            启动后，建模过程会自动渲染显示在这里
+          </div>
+          <img id="shot" alt="Blender 渲染预览" hidden />
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
